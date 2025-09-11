@@ -1,0 +1,1 @@
+{"version":3,"file":"static/css/main.810e8660.css","mappings":"AAAA,KACE,eACF,CAEA,KACE,kBACF","sources":["index.css"],"sourcesContent":["html {\n  min-height: 100%;\n}\n\nbody {\n  background: #f5f5f5;\n}\n"],"names":[],"sourceRoot":""}
