@@ -17,9 +17,10 @@ import { Controller, useForm } from 'react-hook-form';
 import { useRecoilState } from 'recoil';
 import { timeTableState } from '../store/store';
 import { v4 as uuidv1 } from 'uuid';
-
+import { getRandomColor } from "../utils/colors";
 
 const parseTimeToDecimal = (timeStr) => {
+  if (!timeStr) return null;   // ✅ undefined나 빈 값이면 null 반환
   const [h, m] = timeStr.split(":").map(Number);
   return h + m / 60;
 };
@@ -30,6 +31,11 @@ const checkOverLap = (A, B) => {
   const aEnd = parseTimeToDecimal(A.endTime);
   const bStart = parseTimeToDecimal(B.startTime);
   const bEnd = parseTimeToDecimal(B.endTime);
+
+  // ✅ null 값 들어오면 충돌 없다고 처리
+  if (aStart === null || aEnd === null || bStart === null || bEnd === null) {
+    return false;
+  }
 
   return !(aEnd <= bStart || aStart >= bEnd);
 };
@@ -84,7 +90,7 @@ function InputModal({
         startTime,
         endTime,
         name: lectureName,
-        color: lectureColor,
+        color: getRandomColor([]),
         id: uuidv1(),
       };
 
@@ -122,7 +128,7 @@ function InputModal({
           endTime,
           id: idNum,
           name: lectureName,
-          color: lectureColor,
+          color: getRandomColor([]),
         },
       ];
 
@@ -221,22 +227,6 @@ function InputModal({
             />
           </Stack>
 
-          {/* 색상 */}
-          <div style={{ marginTop: '30px' }}>
-            <label htmlFor="lectureColor">시간표 색상:</label>
-            <Controller
-              control={control}
-              name="lectureColor"
-              render={({ field }) => (
-                <input
-                  {...field}
-                  style={{ marginLeft: '30px' }}
-                  id="lectureColor"
-                  type="color"
-                />
-              )}
-            />
-          </div>
         </DialogContent>
         <DialogActions>
           {idNum && (
