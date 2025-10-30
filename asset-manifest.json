@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/timetable-maker/static/css/main.810e8660.css",
-    "main.js": "/timetable-maker/static/js/main.119b4110.js",
+    "main.js": "/timetable-maker/static/js/main.a6f8d838.js",
     "index.html": "/timetable-maker/index.html",
     "main.810e8660.css.map": "/timetable-maker/static/css/main.810e8660.css.map",
-    "main.119b4110.js.map": "/timetable-maker/static/js/main.119b4110.js.map"
+    "main.a6f8d838.js.map": "/timetable-maker/static/js/main.a6f8d838.js.map"
   },
   "entrypoints": [
     "static/css/main.810e8660.css",
-    "static/js/main.119b4110.js"
+    "static/js/main.a6f8d838.js"
   ]
 }
