@@ -92,6 +92,13 @@ function TimeTablePreview({ data }) {
                   );
                 }
 
+                const alreadyCovered = data[day].some((l) => {
+                const s = parseTimeToDecimal(l.startTime);
+                const e = parseTimeToDecimal(l.endTime);
+                return s < t && e > t;
+              });
+              if (alreadyCovered) return null;
+
                 // 빈 셀
                 return (
                   <Box

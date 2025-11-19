@@ -21,6 +21,7 @@ import { timeTableState } from "../store/store";
 import { useRecoilState } from "recoil";
 import LectureSelector from "../LectureSelector/LectureSelector";
 import { getRandomColor } from "../utils/colors";
+import { useNavigate } from "react-router-dom";
 
 // ✅ 9:00 ~ 19:00 (30분 단위 → 20칸)
 const timeSlots = Array.from({ length: 20 }, (_, i) => 9 + i * 0.5);
@@ -41,6 +42,7 @@ function TimeTable() {
   const [timetableName, setTimetableName] = useState("");
   const [generatedTimetables, setGeneratedTimetables] = useState([]);
   const [showGeneratedDialog, setShowGeneratedDialog] = useState(false);
+  const navigate = useNavigate();
 
   const handleClose = useCallback(() => {
     setShowModal(false);
@@ -163,48 +165,11 @@ function generateAllValidTimetables(selectedLectures) {
           </Button>
           <Button
             variant="contained"
-            size="small"
             color="secondary"
-            startIcon={<Shuffle />}
-            onClick={() => {
-              const selectedLectures =
-                JSON.parse(localStorage.getItem("selectedLectures")) || [];
-              if (selectedLectures.length === 0) {
-                alert("선택된 강의가 없습니다. 먼저 강의를 선택하세요!");
-                return;
-              }
-              const generated = generateAllValidTimetables(selectedLectures, 3);
-              setGeneratedTimetables(generated);
-              setShowGeneratedDialog(true);
-            }}
+            onClick={() => navigate("/auto")}
           >
             자동 시간표 생성
           </Button>
-            <Button
-              variant="contained"
-              size="small"
-              color="secondary"
-              startIcon={<Shuffle />}
-              onClick={() => {
-                const selectedLectures =
-                  JSON.parse(localStorage.getItem("selectedLectures")) || [];
-                if (selectedLectures.length === 0) {
-                  alert("선택된 강의가 없습니다. 먼저 강의를 선택하세요!");
-                  return;
-                }
-
-                const generated = generateAllValidTimetables(selectedLectures); // ← 이 부분 수정
-                if (generated.length === 0) {
-                  alert("가능한 시간표 조합이 없습니다.");
-                  return;
-                }
-
-                setGeneratedTimetables(generated.slice(0, 10)); // 너무 많을 경우 10개까지만
-                setShowGeneratedDialog(true);
-              }}
-            >
-              가능한 모든 시간표 보기
-            </Button>
 
 
         </Box>
@@ -400,24 +365,25 @@ function generateAllValidTimetables(selectedLectures) {
       <LectureSelector
         open={showLectureSelector}
         handleClose={() => setShowLectureSelector(false)}
-        onSelect={(day, lecture) => {
+        onSelect={(lecture) => {
+          const day = lecture.day; // 요일을 lecture.day에서 가져옴
           const newStart = parseTimeToDecimal(lecture.startTime);
           const newEnd = parseTimeToDecimal(lecture.endTime);
+
           const hasConflict = timeTableData[day].some((l) => {
             const existStart = parseTimeToDecimal(l.startTime);
             const existEnd = parseTimeToDecimal(l.endTime);
             return !(newEnd <= existStart || newStart >= existEnd);
           });
+
           if (hasConflict) {
             alert("해당 시간에 이미 강의가 존재합니다.");
             return;
           }
+
           setTimeTableData((prev) => ({
             ...prev,
-            [day]: [
-              ...prev[day],
-              { ...lecture, room: lecture.room, id: Date.now() },
-            ],
+            [day]: [...prev[day], { ...lecture, id: Date.now() }],
           }));
         }}
       />

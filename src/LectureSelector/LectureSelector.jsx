@@ -18,30 +18,33 @@ import { getRandomColor } from "../utils/colors";
 function LectureSelector({ open, handleClose, onSelect }) {
   // 🔍 검색 입력값
   const [searchText, setSearchText] = useState("");
-  const [finalText, setFinalText] = useState(""); // 검색에 실제로 쓰이는 텍스트
+  const [finalText, setFinalText] = useState("");
   const [isComposing, setIsComposing] = useState(false);
 
-  // 과목명 선택 (분반 보기용)
+  // 🔽 선택된 과목명 (이걸 기준으로 분반 목록을 보여줌)
   const [selectedName, setSelectedName] = useState("");
 
-  // 🔍 한글 깜빡임 방지 검색 처리
+  // 🔍 입력 핸들러: 입력한 글자는 즉시 보이게, 검색은 조합 상태에 따라
   const handleSearchChange = (e) => {
     const value = e.target.value;
-    setSearchText(value);
+    setSearchText(value); // 입력창에는 실시간으로 표시
 
     if (!isComposing) {
+      // 한글 조합 중이 아닐 때(영문/숫자 등)는 바로 검색
       setFinalText(value);
       setSelectedName("");
     }
   };
 
   const handleCompositionStart = () => {
-    setIsComposing(true);
+    setIsComposing(true); // 한글 조합 시작
   };
 
   const handleCompositionEnd = (e) => {
     const value = e.target.value;
     setIsComposing(false);
+
+    // 한글 글자 하나 완성될 때 검색어로 반영
     setFinalText(value);
     setSelectedName("");
   };
@@ -62,8 +65,8 @@ function LectureSelector({ open, handleClose, onSelect }) {
 
   // 분반 선택 후 상위에 전달
   const handleSelectFinal = (lec) => {
-    const day = lec.강의시간.slice(0, 1);
-    const times = lec.강의시간.slice(1);
+    const day = lec.강의시간.slice(0, 1); // "월"
+    const times = lec.강의시간.slice(1);  // "09:00-10:50"
     const [startTime, endTime] = times.split("-").map((t) => t.trim());
 
     const dayMap = {
@@ -93,8 +96,7 @@ function LectureSelector({ open, handleClose, onSelect }) {
       <DialogTitle align="center">강의 검색</DialogTitle>
 
       <DialogContent>
-
-        {/* 🔍 검색창 (한글 안정 버전) */}
+        {/* 🔍 검색창 (한글 조합 안정 + 실시간 표시) */}
         <TextField
           fullWidth
           label="강의명 검색"
@@ -151,7 +153,9 @@ function LectureSelector({ open, handleClose, onSelect }) {
 
         {/* 🔍 검색 결과 없을 때 */}
         {filteredNames.length === 0 && !selectedName && (
-          <p style={{ textAlign: "center", color: "#777" }}>검색 결과가 없습니다.</p>
+          <p style={{ textAlign: "center", color: "#777" }}>
+            검색 결과가 없습니다.
+          </p>
         )}
       </DialogContent>
 
