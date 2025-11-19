@@ -15,7 +15,7 @@ import {
   Box,
 } from "@mui/material";
 import React, { useCallback, useState } from "react";
-import { AddBox } from "@mui/icons-material";
+import { AddBox, Shuffle } from "@mui/icons-material";
 import InputModal from "../InputModal/InputModal";
 import { timeTableState } from "../store/store";
 import { useRecoilState } from "recoil";
@@ -32,24 +32,23 @@ function parseTimeToDecimal(timeStr) {
   return h + m / 60;
 }
 
-
 function TimeTable() {
   const [timeTableData, setTimeTableData] = useRecoilState(timeTableState);
   const [showModal, setShowModal] = useState(false);
   const [editInfo, setEditInfo] = useState({});
   const [showLectureSelector, setShowLectureSelector] = useState(false);
-  const [conflictDialog, setConflictDialog] = useState(false);
   const [saveDialog, setSaveDialog] = useState(false);
   const [timetableName, setTimetableName] = useState("");
+  const [generatedTimetables, setGeneratedTimetables] = useState([]);
+  const [showGeneratedDialog, setShowGeneratedDialog] = useState(false);
 
   const handleClose = useCallback(() => {
     setShowModal(false);
     setEditInfo({});
   }, []);
 
-  // ✅ 셀 크기 (가로 줄이고, 세로 늘린 버전)
-  const cellHeight = 50; // 30분 = 50px
-  const cellWidth = 60;  // 요일 칸 폭 = 60px
+  const cellHeight = 50;
+  const cellWidth = 60;
 
   // ✅ 특정 요일에 해당 시간대 강의 있는지 확인
   function getLectureAt(day, time) {
@@ -79,6 +78,59 @@ function TimeTable() {
     [timeTableData]
   );
 
+  // ✅ 시간 충돌 검사 함수
+  function isConflict(dayLectures, newLecture) {
+    const newStart = parseTimeToDecimal(newLecture.startTime);
+    const newEnd = parseTimeToDecimal(newLecture.endTime);
+
+    return dayLectures.some((lec) => {
+      const existStart = parseTimeToDecimal(lec.startTime);
+      const existEnd = parseTimeToDecimal(lec.endTime);
+      return !(newEnd <= existStart || newStart >= existEnd);
+    });
+  }
+
+// ✅ 완전 탐색 기반 가능한 모든 시간표 생성
+function generateAllValidTimetables(selectedLectures) {
+  const results = [];
+
+  const days = ["mon", "tue", "wed", "thu", "fri"];
+
+    function backtrack(index, timetable) {
+      // 모든 강의 탐색 완료 → 결과 저장
+      if (index === selectedLectures.length) {
+        // deep copy
+        const copied = {};
+        days.forEach((d) => (copied[d] = [...timetable[d]]));
+        results.push(copied);
+        return;
+      }
+
+      const lec = selectedLectures[index];
+      const day = lec.day;
+
+      // 1️⃣ 현재 강의를 넣지 않고 넘어가기
+      backtrack(index + 1, timetable);
+
+      // 2️⃣ 현재 강의를 넣을 수 있으면 추가 후 다음으로 진행
+      if (!isConflict(timetable[day], lec)) {
+        timetable[day].push({
+          ...lec,
+          color: getRandomColor(),
+          id: Date.now() + Math.random(),
+        });
+        backtrack(index + 1, timetable);
+        timetable[day].pop(); // 백트래킹
+      }
+    }
+
+    const initTimetable = { mon: [], tue: [], wed: [], thu: [], fri: [] };
+    backtrack(0, initTimetable);
+
+    return results;
+  }
+
+
   return (
     <TableContainer
       sx={{
@@ -88,12 +140,7 @@ function TimeTable() {
       }}
     >
       {/* 상단 타이틀 + 버튼 */}
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
-      >
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h4" fontWeight={700}>
           강의시간표
         </Typography>
@@ -117,11 +164,49 @@ function TimeTable() {
           <Button
             variant="contained"
             size="small"
-            color="success"
-            onClick={() => setSaveDialog(true)}
+            color="secondary"
+            startIcon={<Shuffle />}
+            onClick={() => {
+              const selectedLectures =
+                JSON.parse(localStorage.getItem("selectedLectures")) || [];
+              if (selectedLectures.length === 0) {
+                alert("선택된 강의가 없습니다. 먼저 강의를 선택하세요!");
+                return;
+              }
+              const generated = generateAllValidTimetables(selectedLectures, 3);
+              setGeneratedTimetables(generated);
+              setShowGeneratedDialog(true);
+            }}
           >
-            시간표 저장
+            자동 시간표 생성
           </Button>
+            <Button
+              variant="contained"
+              size="small"
+              color="secondary"
+              startIcon={<Shuffle />}
+              onClick={() => {
+                const selectedLectures =
+                  JSON.parse(localStorage.getItem("selectedLectures")) || [];
+                if (selectedLectures.length === 0) {
+                  alert("선택된 강의가 없습니다. 먼저 강의를 선택하세요!");
+                  return;
+                }
+
+                const generated = generateAllValidTimetables(selectedLectures); // ← 이 부분 수정
+                if (generated.length === 0) {
+                  alert("가능한 시간표 조합이 없습니다.");
+                  return;
+                }
+
+                setGeneratedTimetables(generated.slice(0, 10)); // 너무 많을 경우 10개까지만
+                setShowGeneratedDialog(true);
+              }}
+            >
+              가능한 모든 시간표 보기
+            </Button>
+
+
         </Box>
       </Box>
 
@@ -135,7 +220,7 @@ function TimeTable() {
             height: cellHeight,
             fontSize: "0.75rem",
             padding: "2px",
-            overflow: "hidden",   
+            overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "normal",
             wordBreak: "break-word",
@@ -160,19 +245,15 @@ function TimeTable() {
             const minute = time % 1 === 0 ? "00" : "30";
             return (
               <TableRow key={idx}>
-                {/* 시간 열 */}
                 <TableCell align="right" sx={{ fontSize: "0.65rem" }}>
                   {minute === "00" ? `${hour}:00` : ""}
                 </TableCell>
-
-                {/* 요일별 칸 */}
                 {["mon", "tue", "wed", "thu", "fri"].map((day) => {
                   const lec = getLectureAt(day, time);
                   if (lec) {
                     const s = parseTimeToDecimal(lec.startTime);
                     const e = parseTimeToDecimal(lec.endTime);
                     const span = Math.round((e - s) * 2);
-
                     return (
                       <TableCell
                         key={day}
@@ -186,13 +267,15 @@ function TimeTable() {
                         }}
                         onClick={() => Edit(day, lec.id)}
                       >
-                        <div style={{
-                          fontSize: "1rem",
-                          lineHeight: 1.4,
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "flex-start",
-                        }}>
+                        <div
+                          style={{
+                            fontSize: "1rem",
+                            lineHeight: 1.4,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "flex-start",
+                          }}
+                        >
                           <div style={{ fontWeight: "bold", marginBottom: "2px" }}>
                             {lec.name}
                           </div>
@@ -204,14 +287,12 @@ function TimeTable() {
                       </TableCell>
                     );
                   }
-
                   const alreadyCovered = timeTableData[day].some((l) => {
                     const s = parseTimeToDecimal(l.startTime);
                     const e = parseTimeToDecimal(l.endTime);
                     return s < time && e > time;
                   });
                   if (alreadyCovered) return null;
-
                   return <TableCell key={day} />;
                 })}
               </TableRow>
@@ -219,6 +300,62 @@ function TimeTable() {
           })}
         </TableBody>
       </Table>
+
+      {/* 자동 생성된 시간표 보기 */}
+      <Dialog
+        open={showGeneratedDialog}
+        onClose={() => setShowGeneratedDialog(false)}
+        fullWidth
+        maxWidth="md"
+      >
+        <DialogTitle>자동 생성된 시간표 선택</DialogTitle>
+        <DialogContent dividers>
+          {generatedTimetables.map((table, idx) => (
+            <Box
+              key={idx}
+              sx={{
+                mb: 3,
+                p: 2,
+                border: "1px solid #ddd",
+                borderRadius: "8px",
+                backgroundColor: "#fafafa",
+              }}
+            >
+              <Typography variant="subtitle1" mb={1}>
+                조합 {idx + 1}
+              </Typography>
+              {["mon", "tue", "wed", "thu", "fri"].map((day) => (
+                <div key={day}>
+                  <strong>{day.toUpperCase()}</strong>:
+                  {table[day].length > 0 ? (
+                    table[day].map((lec) => (
+                      <span key={lec.id} style={{ marginLeft: 6 }}>
+                        {lec.name}({lec.startTime}~{lec.endTime})
+                      </span>
+                    ))
+                  ) : (
+                    <span style={{ color: "#aaa", marginLeft: 6 }}>없음</span>
+                  )}
+                </div>
+              ))}
+              <Button
+                variant="outlined"
+                size="small"
+                sx={{ mt: 1 }}
+                onClick={() => {
+                  setTimeTableData(table);
+                  setShowGeneratedDialog(false);
+                }}
+              >
+                이 조합 적용
+              </Button>
+            </Box>
+          ))}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowGeneratedDialog(false)}>닫기</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 저장 다이얼로그 */}
       <Dialog open={saveDialog} onClose={() => setSaveDialog(false)}>
@@ -266,46 +403,37 @@ function TimeTable() {
         onSelect={(day, lecture) => {
           const newStart = parseTimeToDecimal(lecture.startTime);
           const newEnd = parseTimeToDecimal(lecture.endTime);
-
-          // ✅ 겹치는지 확인
           const hasConflict = timeTableData[day].some((l) => {
             const existStart = parseTimeToDecimal(l.startTime);
             const existEnd = parseTimeToDecimal(l.endTime);
-
             return !(newEnd <= existStart || newStart >= existEnd);
           });
-
           if (hasConflict) {
             alert("해당 시간에 이미 강의가 존재합니다.");
-            return; // 추가 안 함
+            return;
           }
-
-          // ✅ 겹치지 않으면 추가 (room 포함 + id 부여)
           setTimeTableData((prev) => ({
             ...prev,
             [day]: [
               ...prev[day],
-              {
-                ...lecture,
-                room: lecture.room,
-                id: Date.now(),   // ← 여기서 고유 ID 부여
-              },
+              { ...lecture, room: lecture.room, id: Date.now() },
             ],
           }));
         }}
       />
-    <InputModal
-      showModal={showModal}
-      handleClose={handleClose}
-      dayData={editInfo.dayData}
-      startTimeData={editInfo.startTimeData}
-      endTimeData={editInfo.endTimeData}
-      lectureNameData={editInfo.lectureNameData}
-      colorData={editInfo.colorData}
-      idNum={editInfo.idNum}
-    />
-    </TableContainer>  
-  );                   
-}  
+
+      <InputModal
+        showModal={showModal}
+        handleClose={handleClose}
+        dayData={editInfo.dayData}
+        startTimeData={editInfo.startTimeData}
+        endTimeData={editInfo.endTimeData}
+        lectureNameData={editInfo.lectureNameData}
+        colorData={editInfo.colorData}
+        idNum={editInfo.idNum}
+      />
+    </TableContainer>
+  );
+}
 
 export default TimeTable;

@@ -6,83 +6,141 @@ import {
   DialogActions,
   Button,
   TextField,
-  MenuItem,
   List,
   ListItemButton,
   ListItemText,
   Divider,
 } from "@mui/material";
-import lectures from "../data/lecturetest.json"; // ✅ 더미 데이터
+
+import lectures from "../data/lecture.json";
 import { getRandomColor } from "../utils/colors";
 
 function LectureSelector({ open, handleClose, onSelect }) {
+  // 🔍 검색 입력값
+  const [searchText, setSearchText] = useState("");
+  const [finalText, setFinalText] = useState(""); // 검색에 실제로 쓰이는 텍스트
+  const [isComposing, setIsComposing] = useState(false);
+
+  // 과목명 선택 (분반 보기용)
   const [selectedName, setSelectedName] = useState("");
 
-  // ✅ 선택된 과목명에 해당하는 분반 필터링
+  // 🔍 한글 깜빡임 방지 검색 처리
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchText(value);
+
+    if (!isComposing) {
+      setFinalText(value);
+      setSelectedName("");
+    }
+  };
+
+  const handleCompositionStart = () => {
+    setIsComposing(true);
+  };
+
+  const handleCompositionEnd = (e) => {
+    const value = e.target.value;
+    setIsComposing(false);
+    setFinalText(value);
+    setSelectedName("");
+  };
+
+  // 🔍 검색된 과목명 리스트 (중복 제거)
+  const filteredNames = [
+    ...new Set(
+      lectures
+        .map((lec) => lec.과목명)
+        .filter((name) =>
+          name.toLowerCase().includes(finalText.toLowerCase())
+        )
+    ),
+  ];
+
+  // 🔽 과목명을 선택하면 해당 분반 목록 표시
   const filteredLectures = lectures.filter((l) => l.과목명 === selectedName);
 
+  // 분반 선택 후 상위에 전달
   const handleSelectFinal = (lec) => {
-    // "월09:00-10:50" → 요일, 시작, 끝 분리
-    const day = lec.강의시간.slice(0, 1); // "월"
-    const times = lec.강의시간.slice(1);  // "09:00-10:50"
-    const [startTime, endTime] = times.split("-").map(t => t.trim());
+    const day = lec.강의시간.slice(0, 1);
+    const times = lec.강의시간.slice(1);
+    const [startTime, endTime] = times.split("-").map((t) => t.trim());
 
-    // 요일 매핑 (TimeTable에서 mon, tue, wed... 사용 중이므로 변환 필요)
     const dayMap = {
-      "월": "mon",
-      "화": "tue",
-      "수": "wed",
-      "목": "thu",
-      "금": "fri",
+      월: "mon",
+      화: "tue",
+      수: "wed",
+      목: "thu",
+      금: "fri",
     };
 
     const mappedLecture = {
-      id: Date.now(), // 고유 ID (임시)
+      id: Date.now(),
       name: lec.과목명,
       startTime,
       endTime,
-      color: getRandomColor([]),
       room: lec.강의실,
+      color: getRandomColor([]),
+      day: dayMap[day],
     };
 
-    // 부모에 전달 (요일까지 같이 전달)
-    onSelect(dayMap[day], mappedLecture);
+    onSelect(mappedLecture);
     handleClose();
   };
 
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
-      <DialogTitle align="center">강의 선택</DialogTitle>
-      <DialogContent>
-        {/* 1. 과목명 선택 드롭다운 */}
-        <TextField
-          select
-          fullWidth
-          label="강의명"
-          value={selectedName}
-          onChange={(e) => setSelectedName(e.target.value)}
-          style={{ marginTop: "20px", marginBottom: "20px" }}
-        >
-          {/* 과목명 중복 제거 후 드롭다운에 표시 */}
-          {[...new Set(lectures.map((lec) => lec.과목명))].map((name, idx) => (
-            <MenuItem key={idx} value={name}>
-              {name}
-            </MenuItem>
-          ))}
-        </TextField>
+      <DialogTitle align="center">강의 검색</DialogTitle>
 
-        {/* 2. 같은 과목명의 분반 리스트 */}
-        {filteredLectures.length > 0 && (
+      <DialogContent>
+
+        {/* 🔍 검색창 (한글 안정 버전) */}
+        <TextField
+          fullWidth
+          label="강의명 검색"
+          variant="outlined"
+          value={searchText}
+          onChange={handleSearchChange}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
+          sx={{ mt: 2, mb: 2 }}
+        />
+
+        {/* 🔽 검색된 강의명 리스트 (아직 과목 선택 전) */}
+        {filteredNames.length > 0 && !selectedName && (
+          <List>
+            {filteredNames.map((name, idx) => (
+              <ListItemButton
+                key={idx}
+                onClick={() => setSelectedName(name)}
+                sx={{
+                  borderBottom: "1px solid #eee",
+                  "&:hover": { backgroundColor: "#f5f5f5" },
+                }}
+              >
+                <ListItemText primary={name} />
+              </ListItemButton>
+            ))}
+          </List>
+        )}
+
+        {/* 🔽 선택된 과목의 분반 리스트 */}
+        {selectedName && (
           <>
-            <Divider style={{ margin: "10px 0" }} />
+            <Divider sx={{ my: 1 }} />
+
             <List>
               {filteredLectures.map((lec, idx) => (
                 <ListItemButton
                   key={idx}
                   onClick={() => handleSelectFinal(lec)}
+                  sx={{
+                    borderBottom: "1px solid #eee",
+                    "&:hover": { backgroundColor: "#f5f5f5" },
+                  }}
                 >
                   <ListItemText
-                    primary={`${lec.과목코드 || "코드없음"} / ${lec.교수}`}
+                    primary={`${lec.과목코드} / ${lec.교수}`}
                     secondary={`${lec.강의시간} / ${lec.강의실}`}
                   />
                 </ListItemButton>
@@ -90,10 +148,15 @@ function LectureSelector({ open, handleClose, onSelect }) {
             </List>
           </>
         )}
+
+        {/* 🔍 검색 결과 없을 때 */}
+        {filteredNames.length === 0 && !selectedName && (
+          <p style={{ textAlign: "center", color: "#777" }}>검색 결과가 없습니다.</p>
+        )}
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={handleClose}>취소</Button>
+        <Button onClick={handleClose}>닫기</Button>
       </DialogActions>
     </Dialog>
   );

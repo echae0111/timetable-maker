@@ -36,7 +36,7 @@ function Home() {
         <Button
           variant="outlined"
           color="secondary"
-          onClick={() => navigate("/auto-generate")}
+          onClick={() => navigate("/auto")}
         >
           시간표 자동 생성
         </Button>
