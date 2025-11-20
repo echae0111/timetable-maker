@@ -12,7 +12,8 @@ import { timeTableState } from "../store/store";
 import { useNavigate } from "react-router-dom";
 import { generateAllValidTimetables } from "../utils/TimeTableGenerator";
 import LectureSelector from "../LectureSelector/LectureSelector";
-import TimeTablePreview from "./TimeTablePreview"; // ✅ 미리보기용
+import TimeTablePreview from "./TimeTablePreview";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 
 function AutoTimeTable() {
   const [timeTableData, setTimeTableData] = useRecoilState(timeTableState);
@@ -126,193 +127,207 @@ function AutoTimeTable() {
 
   return (
     <Box sx={{ width: "85%", margin: "0 auto", mt: 4 }}>
-      <Typography variant="h4" fontWeight={700} mb={3}>
-        자동 시간표 생성기
-      </Typography>
-
-      {/* 강의 선택 */}
-      <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+      <Box sx={{ display: "flex", alignItems: "center", mb: 3, gap: 1 }}>
         <Button
-          variant="contained"
-          color="secondary"
-          onClick={() => setShowSelector(true)}
-        >
-          강의 추가하기
-        </Button>
-
-        <Button variant="contained" color="success" onClick={handleGenerate}>
-          가능한 시간표 보기
-        </Button>
-      </Box>
-
-      {/* ✅ 선택된 강의 목록 */}
-      {selectedLectures.length > 0 && (
-        <Box
+          onClick={() => navigate(-1)}
           sx={{
-            mb: 4,
-            p: 2,
-            border: "1px solid #ddd",
-            borderRadius: 2,
-            backgroundColor: "#fafafa",
+            minWidth: "auto",
+            padding: 0,
+            color: "#000"
           }}
         >
-          <Typography variant="h6" fontWeight={600} mb={2}>
-            선택된 강의
-          </Typography>
+          <ChevronLeftIcon sx={{ fontSize: 45 }} /> 
+        </Button>
+        <Typography variant="h4" fontWeight={700}>
+          자동 시간표 생성기
+        </Typography>
+      </Box>
+      
+      <Box sx={{ pl: 5 }}> 
+        {/* 강의 선택 */}
+        <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={() => setShowSelector(true)}
+          >
+            강의 추가하기
+          </Button>
 
+          <Button variant="contained" color="success" onClick={handleGenerate}>
+            가능한 시간표 보기
+          </Button>
+        </Box>
+
+        {/* ✅ 선택된 강의 목록 */}
+        {selectedLectures.length > 0 && (
           <Box
             sx={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
-              gap: 2,
+              mb: 4,
+              p: 2,
+              border: "1px solid #ddd",
+              borderRadius: 2,
+              backgroundColor: "#fafafa",
             }}
           >
-            {selectedLectures.map((lec) => (
-              <Box
-                key={lec.id}
-                sx={{
-                  position: "relative",
-                  p: 2,
-                  border: "1px solid #ccc",
-                  borderRadius: 2,
-                  backgroundColor: "#fff",
-                  boxShadow: "1px 1px 4px rgba(0,0,0,0.05)",
-                  transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                  "&:hover": {
-                    transform: "translateY(-2px)",
-                    boxShadow: "2px 2px 6px rgba(0,0,0,0.1)",
-                  },
-                }}
-              >
-                <Button
-                  variant="outlined"
-                  color="error"
-                  size="small"
-                  onClick={() =>
-                    setSelectedLectures((prev) =>
-                      prev.filter((l) => l.id !== lec.id)
-                    )
-                  }
+            <Typography variant="h6" fontWeight={600} mb={2}>
+              선택된 강의
+            </Typography>
+
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
+                gap: 2,
+              }}
+            >
+              {selectedLectures.map((lec) => (
+                <Box
+                  key={lec.id}
                   sx={{
-                    position: "absolute",
-                    top: 8,
-                    right: 8,
-                    minWidth: "auto",
-                    px: 1.2,
-                    py: 0.3,
-                    fontSize: "0.7rem",
-                    textTransform: "none",
+                    position: "relative",
+                    p: 2,
+                    border: "1px solid #ccc",
+                    borderRadius: 2,
+                    backgroundColor: "#fff",
+                    boxShadow: "1px 1px 4px rgba(0,0,0,0.05)",
+                    transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                    "&:hover": {
+                      transform: "translateY(-2px)",
+                      boxShadow: "2px 2px 6px rgba(0,0,0,0.1)",
+                    },
                   }}
                 >
-                  삭제
-                </Button>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                    onClick={() =>
+                      setSelectedLectures((prev) =>
+                        prev.filter((l) => l.id !== lec.id)
+                      )
+                    }
+                    sx={{
+                      position: "absolute",
+                      top: 8,
+                      right: 8,
+                      minWidth: "auto",
+                      px: 1.2,
+                      py: 0.3,
+                      fontSize: "0.7rem",
+                      textTransform: "none",
+                    }}
+                  >
+                    삭제
+                  </Button>
 
-                <Typography fontWeight={600} sx={{ mb: 0.5, fontSize: "0.95rem" }}>
-                  {lec.name}
-                </Typography>
-                <Typography sx={{ fontSize: "0.85rem", color: "#555" }}>
-                  {lec.day} {lec.startTime}~{lec.endTime}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-        </Box>
-      )}
-
-      {/* ✅ 조합 리스트 */}
-      <Box mt={4}>
-        {generated.map((table, idx) => (
-          <Paper
-            key={idx}
-            elevation={2}
-            sx={{
-              p: 2,
-              mb: 2,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <Box>
-              <Typography variant="subtitle1" fontWeight={700}>
-                조합 {idx + 1}
-              </Typography>
-              {["mon", "tue", "wed", "thu", "fri"].map((day) => (
-                <div key={day}>
-                  <strong>{day.toUpperCase()}</strong> :
-                  {table[day].length > 0 ? (
-                    table[day].map((lec, i) => (
-                      <span key={i} style={{ marginLeft: 6 }}>
-                        {lec.name}({lec.startTime}~{lec.endTime})
-                      </span>
-                    ))
-                  ) : (
-                    <span style={{ color: "#aaa", marginLeft: 6 }}>없음</span>
-                  )}
-                </div>
+                  <Typography fontWeight={600} sx={{ mb: 0.5, fontSize: "0.95rem" }}>
+                    {lec.name}
+                  </Typography>
+                  <Typography sx={{ fontSize: "0.85rem", color: "#555" }}>
+                    {lec.day} {lec.startTime}~{lec.endTime}
+                  </Typography>
+                </Box>
               ))}
-              <Button
-                variant="outlined"
-                size="small"
-                sx={{ mt: 1 }}
-                onClick={() => applyToTimeTable(table)}
-              >
-                이 조합 적용
-              </Button>
             </Box>
+          </Box>
+        )}
 
-            {/* ✅ 오른쪽 "시간표 미리보기" 버튼 */}
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => openPreview(table)}
+        {/* ✅ 조합 리스트 */}
+        <Box mt={4}>
+          {generated.map((table, idx) => (
+            <Paper
+              key={idx}
+              elevation={2}
+              sx={{
+                p: 2,
+                mb: 2,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
             >
-              시간표 미리보기
-            </Button>
-          </Paper>
-        ))}
-      </Box>
+              <Box>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  조합 {idx + 1}
+                </Typography>
+                {["mon", "tue", "wed", "thu", "fri"].map((day) => (
+                  <div key={day}>
+                    <strong>{day.toUpperCase()}</strong> :
+                    {table[day].length > 0 ? (
+                      table[day].map((lec, i) => (
+                        <span key={i} style={{ marginLeft: 6 }}>
+                          {lec.name}({lec.startTime}~{lec.endTime})
+                        </span>
+                      ))
+                    ) : (
+                      <span style={{ color: "#aaa", marginLeft: 6 }}>없음</span>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  variant="outlined"
+                  size="small"
+                  sx={{ mt: 1 }}
+                  onClick={() => applyToTimeTable(table)}
+                >
+                  이 조합 적용
+                </Button>
+              </Box>
 
-      {/* ✅ 강의 선택 모달 */}
-      <LectureSelector
-        open={showSelector}
-        handleClose={() => setShowSelector(false)}
-        onSelect={handleLectureSelect}
-      />
+              {/* ✅ 오른쪽 "시간표 미리보기" 버튼 */}
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => openPreview(table)}
+              >
+                시간표 미리보기
+              </Button>
+            </Paper>
+          ))}
+        </Box>
 
-      {/* ✅ 미리보기 다이얼로그 */}
-      <Dialog
-        open={previewOpen}
-        onClose={() => setPreviewOpen(false)}
-        fullWidth={false}
-        maxWidth="sm"
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            p: 2,
-            minWidth: "650px",
-          },
-        }}
-      >
-        <DialogContent
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            p: 3,
+        {/* ✅ 강의 선택 모달 */}
+        <LectureSelector
+          open={showSelector}
+          handleClose={() => setShowSelector(false)}
+          onSelect={handleLectureSelect}
+        />
+
+        {/* ✅ 미리보기 다이얼로그 */}
+        <Dialog
+          open={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          fullWidth={false}
+          maxWidth="sm"
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              p: 2,
+              minWidth: "650px",
+            },
           }}
         >
-          {previewData ? (
-            <TimeTablePreview data={previewData} />
-          ) : (
-            <Typography>미리볼 시간표가 없습니다.</Typography>
-          )}
-        </DialogContent>
+          <DialogContent
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              p: 3,
+            }}
+          >
+            {previewData ? (
+              <TimeTablePreview data={previewData} />
+            ) : (
+              <Typography>미리볼 시간표가 없습니다.</Typography>
+            )}
+          </DialogContent>
 
-        <Box mt={2} textAlign="center">
-          <Button onClick={() => setPreviewOpen(false)}>닫기</Button>
-        </Box>
-      </Dialog>
+          <Box mt={2} textAlign="center">
+            <Button onClick={() => setPreviewOpen(false)}>닫기</Button>
+          </Box>
+        </Dialog>
+      </Box>
     </Box>
   );
 }

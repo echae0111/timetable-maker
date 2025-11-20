@@ -22,6 +22,7 @@ import { useRecoilState } from "recoil";
 import LectureSelector from "../LectureSelector/LectureSelector";
 import { getRandomColor } from "../utils/colors";
 import { useNavigate } from "react-router-dom";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 
 // ✅ 9:00 ~ 19:00 (30분 단위 → 20칸)
 const timeSlots = Array.from({ length: 20 }, (_, i) => 9 + i * 0.5);
@@ -136,16 +137,28 @@ function generateAllValidTimetables(selectedLectures) {
   return (
     <TableContainer
       sx={{
-        width: "70%",
-        minWidth: "600px",
-        margin: "40px auto",
+        width: "60%",
+        minWidth: "550px",
+        margin: "30px auto",
       }}
     >
       {/* 상단 타이틀 + 버튼 */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+      <Box sx={{ display: "flex", alignItems: "center", mb: 3, gap: 1 }}>
+        <Button
+          onClick={() => navigate(-1)}
+          sx={{
+            minWidth: "auto",
+            padding: 0,
+            color: "#000"
+          }}
+        >
+          <ChevronLeftIcon sx={{ fontSize: 45 }} /> 
+        </Button>
         <Typography variant="h4" fontWeight={700}>
-          강의시간표
+          강의시간표 생성
         </Typography>
+      </Box>
 
         <Box display="flex" gap={1}>
           <Button
@@ -180,30 +193,47 @@ function generateAllValidTimetables(selectedLectures) {
         sx={{
           tableLayout: "fixed",
           "& th, & td": {
-            border: "1px solid rgba(224,224,224,1)",
+            border: "1px solid #eee",
             width: cellWidth,
-            height: cellHeight,
-            fontSize: "0.75rem",
-            padding: "2px",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "normal",
-            wordBreak: "break-word",
+            height: cellHeight - 10,
+            fontSize: "0.7rem",
+            padding: "1px 2px",
           },
         }}
       >
-        <TableHead>
-          <TableRow>
-            <TableCell align="center" sx={{ width: 50 }}>
-              시간
-            </TableCell>
-            <TableCell align="center">월</TableCell>
-            <TableCell align="center">화</TableCell>
-            <TableCell align="center">수</TableCell>
-            <TableCell align="center">목</TableCell>
-            <TableCell align="center">금</TableCell>
-          </TableRow>
-        </TableHead>
+          <TableHead>
+            <TableRow>
+              <TableCell
+                align="center"
+                sx={{
+                  width: 40,
+                  backgroundColor: "#fafafa",
+                  fontWeight: 600,
+                  fontSize: "0.8rem",
+                  borderBottom: "1px solid #eee",
+                }}
+              >
+                시간
+              </TableCell>
+
+              {["월", "화", "수", "목", "금"].map((day, idx) => (
+                <TableCell
+                  key={idx}
+                  align="center"
+                  sx={{
+                    backgroundColor: "#fafafa",
+                    fontWeight: 600,
+                    fontSize: "0.85rem",
+                    height: 40,
+                    borderBottom: "1px solid #eee",
+                    borderRight: "1px solid #eee",
+                  }}
+                >
+                  {day}
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
         <TableBody>
           {timeSlots.map((time, idx) => {
             const hour = Math.floor(time);
@@ -225,7 +255,9 @@ function generateAllValidTimetables(selectedLectures) {
                         rowSpan={span}
                         sx={{
                           backgroundColor: lec.color,
-                          p: 0.5,
+                          borderRadius: "6px",
+                          boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
+                          padding: "4px",
                           cursor: "pointer",
                           verticalAlign: "top",
                           textAlign: "left",
@@ -234,8 +266,8 @@ function generateAllValidTimetables(selectedLectures) {
                       >
                         <div
                           style={{
-                            fontSize: "1rem",
-                            lineHeight: 1.4,
+                            fontSize: "0.8rem",
+                            lineHeight: 1.3,
                             display: "flex",
                             flexDirection: "column",
                             alignItems: "flex-start",
