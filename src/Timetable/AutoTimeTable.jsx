@@ -15,6 +15,32 @@ import LectureSelector from "../LectureSelector/LectureSelector";
 import TimeTablePreview from "./TimeTablePreview";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 
+function scoreTimetable(table) {
+  let score = 0;
+
+  const days = ["mon", "tue", "wed", "thu", "fri"];
+
+  // 공강 (수업 적을수록 점수↑)
+  const totalLectures = days.reduce((acc, d) => acc + table[d].length, 0);
+  score += (50 - totalLectures) * 10;
+
+  // 1교시 없는 시간표 보너스
+  const has9am = days.some((d) =>
+    table[d].some((lec) => lec.startTime === "09:00")
+  );
+  if (!has9am) score += 100;
+
+  // 비어 있는 요일 보너스
+  days.forEach((d) => {
+    const count = table[d].length;
+    if (count <= 1) score += 10;
+    if (count === 0) score += 20;
+  });
+
+  return score;
+}
+
+
 function AutoTimeTable() {
   const [timeTableData, setTimeTableData] = useRecoilState(timeTableState);
   const [selectedLectures, setSelectedLectures] = useState([]);
@@ -22,7 +48,14 @@ function AutoTimeTable() {
   const [showSelector, setShowSelector] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState(null);
+  const [filterOptions, setFilterOptions] = useState({
+  preferFreeTimes: false,
+  avoid9am: false,
+  fewerLectures: false,
+  });
   const navigate = useNavigate();
+
+  
 
   // ✅ 강의 선택 핸들러
   const handleLectureSelect = (lecture) => {
@@ -97,8 +130,36 @@ function AutoTimeTable() {
       if (!subsetFound) filtered.push(results[i]);
     }
 
+    let finalList = filtered;
+
+    if (filterOptions.preferFreeTimes) {
+      finalList = [...finalList].sort(
+        (a, b) => scoreTimetable(b) - scoreTimetable(a)
+      );
+    }
+
+    if (filterOptions.avoid9am) {
+      finalList = [...finalList].sort((a, b) => {
+        const hasA9 = ["mon","tue","wed","thu","fri"].some(
+          (d) => a[d].some((lec) => lec.startTime === "09:00")
+        );
+        const hasB9 = ["mon","tue","wed","thu","fri"].some(
+          (d) => b[d].some((lec) => lec.startTime === "09:00")
+        );
+        return hasA9 - hasB9;
+      });
+    }
+
+    if (filterOptions.fewerLectures) {
+      finalList = [...finalList].sort((a, b) => {
+        const countA = Object.values(a).reduce((s, arr) => s + arr.length, 0);
+        const countB = Object.values(b).reduce((s, arr) => s + arr.length, 0);
+        return countA - countB;
+      });
+    }
+
     // ✅ 요일별 강의 오름차순 정렬
-    filtered.forEach((table) => {
+    finalList.forEach((table) => {
       const days = ["mon", "tue", "wed", "thu", "fri"];
       days.forEach((day) => {
         table[day].sort((a, b) => {
@@ -110,7 +171,7 @@ function AutoTimeTable() {
     });
 
     // ✅ 최종 결과 저장
-    setGenerated(filtered);
+    setGenerated(finalList);
   };
 
   // ✅ 시간표 적용
@@ -127,21 +188,31 @@ function AutoTimeTable() {
 
   return (
     <Box sx={{ width: "85%", margin: "0 auto", mt: 4 }}>
-      <Box sx={{ display: "flex", alignItems: "center", mb: 3, gap: 1 }}>
+      <Box 
+        sx={{ 
+          display: "flex", 
+          alignItems: "center", 
+          mb: 3, 
+          gap: 1,
+          pl: 1
+        }}
+      >
         <Button
           onClick={() => navigate(-1)}
           sx={{
             minWidth: "auto",
-            padding: 0,
-            color: "#000"
+            p: 0,
+            color: "black",
           }}
         >
-          <ChevronLeftIcon sx={{ fontSize: 45 }} /> 
+          <ChevronLeftIcon sx={{ fontSize: 40 }} />
         </Button>
+
         <Typography variant="h4" fontWeight={700}>
           자동 시간표 생성기
         </Typography>
       </Box>
+
       
       <Box sx={{ pl: 5 }}> 
         {/* 강의 선택 */}
@@ -157,6 +228,49 @@ function AutoTimeTable() {
           <Button variant="contained" color="success" onClick={handleGenerate}>
             가능한 시간표 보기
           </Button>
+            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+            <label>
+              <input
+                type="checkbox"
+                checked={filterOptions.preferFreeTimes}
+                onChange={(e) =>
+                  setFilterOptions((prev) => ({
+                    ...prev,
+                    preferFreeTimes: e.target.checked,
+                  }))
+                }
+              />
+              공강 많은 순
+            </label>
+
+            <label>
+              <input
+                type="checkbox"
+                checked={filterOptions.avoid9am}
+                onChange={(e) =>
+                  setFilterOptions((prev) => ({
+                    ...prev,
+                    avoid9am: e.target.checked,
+                  }))
+                }
+              />
+              1교시 제외
+            </label>
+
+            <label>
+              <input
+                type="checkbox"
+                checked={filterOptions.fewerLectures}
+                onChange={(e) =>
+                  setFilterOptions((prev) => ({
+                    ...prev,
+                    fewerLectures: e.target.checked,
+                  }))
+                }
+              />
+              수업 적은 순
+            </label>
+          </Box>
         </Box>
 
         {/* ✅ 선택된 강의 목록 */}

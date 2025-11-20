@@ -129,6 +129,13 @@ function LectureSelector({ open, handleClose, onSelect }) {
         {/* 🔽 선택된 과목의 분반 리스트 */}
         {selectedName && (
           <>
+                <Button
+                  variant="outlined"
+                  onClick={() => setSelectedName("")}
+                  sx={{ mb: 1 }}
+                >
+                  ← 뒤로가기
+                </Button>
             <Divider sx={{ my: 1 }} />
 
             <List>
