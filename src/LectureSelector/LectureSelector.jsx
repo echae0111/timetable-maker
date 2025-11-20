@@ -12,7 +12,7 @@ import {
   Divider,
 } from "@mui/material";
 
-import lectures from "../data/lecture.json";
+import lectures from "../data/lecture1.json";
 import { getRandomColor } from "../utils/colors";
 
 function LectureSelector({ open, handleClose, onSelect }) {

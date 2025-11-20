@@ -24,15 +24,48 @@ import { getRandomColor } from "../utils/colors";
 import { useNavigate } from "react-router-dom";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 
-// ✅ 9:00 ~ 19:00 (30분 단위 → 20칸)
 const timeSlots = Array.from({ length: 20 }, (_, i) => 9 + i * 0.5);
 
-// ✅ HH:mm → decimal
 function parseTimeToDecimal(timeStr) {
-  if (!timeStr) return 0;
-  const [h, m] = timeStr.split(":").map(Number);
-  return h + m / 60;
+  const [hour, minute] = timeStr.split(":").map(Number);
+  return hour + minute / 60;
 }
+
+
+function parseLectureTime(timeStr) {
+  
+
+  const match = timeStr.match(/^([월화수목금토일,]+)(.*)$/);
+  if (!match) return null;
+
+  const daysRaw = match[1];
+  const timeRaw = match[2];
+
+  const days = daysRaw.split(",").map(d => d.trim());
+
+  const [startTime, endTime] = timeRaw.split(/-|~/).map(t => t.trim());
+
+  return {
+    days,
+    startTime,
+    endTime
+  };
+}// timeTableData: { MON:[], TUE:[], ... }
+
+// 변환: 한글 요일 → 영어 요일
+function convertKoreanDayToEng(d) {
+  const map = {
+    "월": "mon",
+    "화": "tue",
+    "수": "wed",
+    "목": "thu",
+    "금": "fri",
+    "토": "sat",
+    "일": "sun",
+  };
+  return map[d] || d;
+}
+
 
 function TimeTable() {
   const [timeTableData, setTimeTableData] = useRecoilState(timeTableState);
@@ -398,27 +431,43 @@ function generateAllValidTimetables(selectedLectures) {
         open={showLectureSelector}
         handleClose={() => setShowLectureSelector(false)}
         onSelect={(lecture) => {
-          const day = lecture.day; // 요일을 lecture.day에서 가져옴
-          const newStart = parseTimeToDecimal(lecture.startTime);
-          const newEnd = parseTimeToDecimal(lecture.endTime);
+          const parsed = parseLectureTime(lecture.강의시간);
 
-          const hasConflict = timeTableData[day].some((l) => {
-            const existStart = parseTimeToDecimal(l.startTime);
-            const existEnd = parseTimeToDecimal(l.endTime);
-            return !(newEnd <= existStart || newStart >= existEnd);
+          parsed.days.forEach((day) => {
+            const dayKey = convertKoreanDayToEng(day); // "화" -> "tue"
+
+            const newStart = parseTimeToDecimal(parsed.startTime);
+            const newEnd = parseTimeToDecimal(parsed.endTime);
+
+            const hasConflict = timeTableData[dayKey].some((l) => {
+              const existStart = parseTimeToDecimal(l.startTime);
+              const existEnd = parseTimeToDecimal(l.endTime);
+              return !(newEnd <= existStart || newStart >= existEnd);
+            });
+
+            if (hasConflict) {
+              alert(`${day} 해당 시간에 이미 강의가 존재합니다`);
+              return;
+            }
+
+            setTimeTableData((prev) => ({
+              ...prev,
+              [dayKey]: [
+                ...prev[dayKey],
+                {
+                  ...lecture,
+                  day: dayKey,
+                  startTime: parsed.startTime,
+                  endTime: parsed.endTime,
+                  id: Date.now() + Math.random(),
+                  color: getRandomColor(),
+                },
+              ],
+            }));
           });
-
-          if (hasConflict) {
-            alert("해당 시간에 이미 강의가 존재합니다.");
-            return;
-          }
-
-          setTimeTableData((prev) => ({
-            ...prev,
-            [day]: [...prev[day], { ...lecture, id: Date.now() }],
-          }));
         }}
       />
+
 
       <InputModal
         showModal={showModal}
