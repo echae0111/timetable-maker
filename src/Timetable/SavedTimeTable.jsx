@@ -65,7 +65,7 @@ function SavedTimeTable() {
           </Button>
         )}
 
-        {/* ✅ JSON 대신 테이블로 렌더링 */}
+        {/* JSON 대신 테이블로 렌더링 */}
         {selectedTable ? (
           <TimeTableView timeTableData={selectedTable.data} />
         ) : (

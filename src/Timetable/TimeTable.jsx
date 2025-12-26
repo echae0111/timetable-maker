@@ -86,7 +86,7 @@ function TimeTable() {
   const cellHeight = 50;
   const cellWidth = 60;
 
-  // ✅ 특정 요일에 해당 시간대 강의 있는지 확인
+  // 특정 요일에 해당 시간대 강의 있는지 확인
   function getLectureAt(day, time) {
     const lec = timeTableData[day].find((l) => {
       const s = parseTimeToDecimal(l.startTime);
@@ -95,7 +95,7 @@ function TimeTable() {
     return lec || null;
   }
 
-  // ✅ 수정 모달 열기
+  // 수정 모달 열기
   const Edit = useCallback(
     (day, id) => {
       const { startTime, endTime, name, color } = timeTableData[day].find(
@@ -114,7 +114,7 @@ function TimeTable() {
     [timeTableData]
   );
 
-  // ✅ 시간 충돌 검사 함수
+  // 시간 충돌 검사 함수
   function isConflict(dayLectures, newLecture) {
     const newStart = parseTimeToDecimal(newLecture.startTime);
     const newEnd = parseTimeToDecimal(newLecture.endTime);
@@ -126,7 +126,7 @@ function TimeTable() {
     });
   }
 
-// ✅ 완전 탐색 기반 가능한 모든 시간표 생성
+// 완전 탐색 기반 가능한 모든 시간표 생성
 function generateAllValidTimetables(selectedLectures) {
   const results = [];
 
@@ -145,10 +145,10 @@ function generateAllValidTimetables(selectedLectures) {
       const lec = selectedLectures[index];
       const day = lec.day;
 
-      // 1️⃣ 현재 강의를 넣지 않고 넘어가기
+      // 현재 강의를 넣지 않고 넘어가기
       backtrack(index + 1, timetable);
 
-      // 2️⃣ 현재 강의를 넣을 수 있으면 추가 후 다음으로 진행
+      // 현재 강의를 넣을 수 있으면 추가 후 다음으로 진행
       if (!isConflict(timetable[day], lec)) {
         timetable[day].push({
           ...lec,

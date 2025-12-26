@@ -12,19 +12,37 @@ import {
   Divider,
 } from "@mui/material";
 
-import lectures from "../data/lecture1.json";
+import lectures from "../data/lecture1_final.json";
 import { getRandomColor } from "../utils/colors";
 
+const dayMap = {
+  월: "mon",
+  화: "tue",
+  수: "wed",
+  목: "thu",
+  금: "fri",
+};
+
+function parseTimeSlot(timeStr) {
+  if (!timeStr || timeStr === "x") return null;
+
+  const day = dayMap[timeStr[0]];
+  const [startTime, endTime] = timeStr.slice(1).split("-");
+
+  return { day, startTime, endTime };
+}
+
+
 function LectureSelector({ open, handleClose, onSelect }) {
-  // 🔍 검색 입력값
+  // 검색 입력값
   const [searchText, setSearchText] = useState("");
   const [finalText, setFinalText] = useState("");
   const [isComposing, setIsComposing] = useState(false);
 
-  // 🔽 선택된 과목명 (이걸 기준으로 분반 목록을 보여줌)
+  // 선택된 과목명 (이걸 기준으로 분반 목록을 보여줌)
   const [selectedName, setSelectedName] = useState("");
 
-  // 🔍 입력 핸들러: 입력한 글자는 즉시 보이게, 검색은 조합 상태에 따라
+  // 입력 핸들러: 입력한 글자는 즉시 보이게, 검색은 조합 상태에 따라
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchText(value); // 입력창에는 실시간으로 표시
@@ -49,7 +67,7 @@ function LectureSelector({ open, handleClose, onSelect }) {
     setSelectedName("");
   };
 
-  // 🔍 검색된 과목명 리스트 (중복 제거)
+  // 검색된 과목명 리스트 (중복 제거)
   const filteredNames = [
     ...new Set(
       lectures
@@ -60,36 +78,49 @@ function LectureSelector({ open, handleClose, onSelect }) {
     ),
   ];
 
-  // 🔽 과목명을 선택하면 해당 분반 목록 표시
+  // 과목명을 선택하면 해당 분반 목록 표시
   const filteredLectures = lectures.filter((l) => l.과목명 === selectedName);
 
   // 분반 선택 후 상위에 전달
   const handleSelectFinal = (lec) => {
-    const day = lec.강의시간.slice(0, 1); // "월"
-    const times = lec.강의시간.slice(1);  // "09:00-10:50"
-    const [startTime, endTime] = times.split("-").map((t) => t.trim());
+    const slots = [];
 
-    const dayMap = {
-      월: "mon",
-      화: "tue",
-      수: "wed",
-      목: "thu",
-      금: "fri",
-    };
+    const t1 = parseTimeSlot(lec.강의시간1);
+    if (t1) {
+      slots.push({
+        id: Date.now() + Math.random(),
+        name: lec.과목명,
+        day: t1.day,
+        startTime: t1.startTime,
+        endTime: t1.endTime,
+        room: lec.강의실1,
+        color: getRandomColor([]),
+      });
+    }
 
-    const mappedLecture = {
+    const t2 = parseTimeSlot(lec.강의시간2);
+    if (t2) {
+      slots.push({
+        id: Date.now() + Math.random(),
+        name: lec.과목명,
+        day: t2.day,
+        startTime: t2.startTime,
+        endTime: t2.endTime,
+        room: lec.강의실2,
+        color: getRandomColor([]),
+      });
+    }
+
+    // 슬롯 단위로 상위에 전달
+    onSelect({
       id: Date.now(),
       name: lec.과목명,
-      startTime,
-      endTime,
-      room: lec.강의실,
+      slots,
       color: getRandomColor([]),
-      day: dayMap[day],
-    };
-
-    onSelect(mappedLecture);
+    });
     handleClose();
   };
+
 
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
@@ -108,7 +139,7 @@ function LectureSelector({ open, handleClose, onSelect }) {
           sx={{ mt: 2, mb: 2 }}
         />
 
-        {/* 🔽 검색된 강의명 리스트 (아직 과목 선택 전) */}
+        {/* 검색된 강의명 리스트 (아직 과목 선택 전) */}
         {filteredNames.length > 0 && !selectedName && (
           <List>
             {filteredNames.map((name, idx) => (
@@ -126,7 +157,7 @@ function LectureSelector({ open, handleClose, onSelect }) {
           </List>
         )}
 
-        {/* 🔽 선택된 과목의 분반 리스트 */}
+        {/* 선택된 과목의 분반 리스트 */}
         {selectedName && (
           <>
                 <Button
@@ -150,7 +181,7 @@ function LectureSelector({ open, handleClose, onSelect }) {
                 >
                   <ListItemText
                     primary={`${lec.과목코드} / ${lec.교수}`}
-                    secondary={`${lec.강의시간} / ${lec.강의실}`}
+                    secondary={`${lec.강의시간1}${lec.강의시간2 !== "x" ? ", " + lec.강의시간2 : ""}`}
                   />
                 </ListItemButton>
               ))}
@@ -158,7 +189,7 @@ function LectureSelector({ open, handleClose, onSelect }) {
           </>
         )}
 
-        {/* 🔍 검색 결과 없을 때 */}
+        {/* 검색 결과 없을 때 */}
         {filteredNames.length === 0 && !selectedName && (
           <p style={{ textAlign: "center", color: "#777" }}>
             검색 결과가 없습니다.

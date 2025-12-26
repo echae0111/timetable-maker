@@ -17,20 +17,15 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 
 function scoreTimetable(table) {
   let score = 0;
-
   const days = ["mon", "tue", "wed", "thu", "fri"];
-
-  // 공강 (수업 적을수록 점수↑)
   const totalLectures = days.reduce((acc, d) => acc + table[d].length, 0);
   score += (50 - totalLectures) * 10;
 
-  // 1교시 없는 시간표 보너스
   const has9am = days.some((d) =>
     table[d].some((lec) => lec.startTime === "09:00")
   );
   if (!has9am) score += 100;
 
-  // 비어 있는 요일 보너스
   days.forEach((d) => {
     const count = table[d].length;
     if (count <= 1) score += 10;
@@ -40,7 +35,6 @@ function scoreTimetable(table) {
   return score;
 }
 
-
 function AutoTimeTable() {
   const [timeTableData, setTimeTableData] = useRecoilState(timeTableState);
   const [selectedLectures, setSelectedLectures] = useState([]);
@@ -48,36 +42,46 @@ function AutoTimeTable() {
   const [showSelector, setShowSelector] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState(null);
+
   const [filterOptions, setFilterOptions] = useState({
-  preferFreeTimes: false,
-  avoid9am: false,
-  fewerLectures: false,
+    longClass: "none",
+    fridayOff: false,
+    preferFreeTimes: false,
+    maxPerDay: "none",
+    lunchOff: false,
   });
+
   const navigate = useNavigate();
 
-  
-
-  // ✅ 강의 선택 핸들러
   const handleLectureSelect = (lecture) => {
-    if (!lecture?.name || !lecture?.day) {
+    if (!lecture?.name || !Array.isArray(lecture.slots) || lecture.slots.length === 0) {
       alert("강의 정보가 올바르지 않습니다.");
       return;
     }
 
+  const alreadySelected = selectedLectures.some(
+    (lec) => lec.name === lecture.name
+  );
+
+  if (alreadySelected) {
+    alert("이미 선택한 강의입니다.");
+    return;
+  }
     setSelectedLectures((prev) => [...prev, { ...lecture, id: Date.now() }]);
     setShowSelector(false);
   };
 
-  // ✅ 자동 시간표 생성
   const handleGenerate = () => {
     if (selectedLectures.length === 0) {
       alert("선택된 강의가 없습니다.");
       return;
     }
 
-    let results = generateAllValidTimetables(selectedLectures);
 
-    // 1️⃣ 빈 시간표 제거
+  let results = generateAllValidTimetables(selectedLectures);
+
+
+
     results = results.filter((table) => {
       const totalLectures = Object.values(table).reduce(
         (sum, dayArr) => sum + dayArr.length,
@@ -91,7 +95,6 @@ function AutoTimeTable() {
       return;
     }
 
-    // 2️⃣ 내림차순 정렬 (강의 개수 많은 순)
     results.sort((a, b) => {
       const countA = Object.values(a).reduce(
         (sum, dayArr) => sum + dayArr.length,
@@ -104,7 +107,6 @@ function AutoTimeTable() {
       return countB - countA;
     });
 
-    // 3️⃣ 상위 조합에 완전히 포함된 하위 조합 제거
     const isSubset = (small, large) => {
       const days = ["mon", "tue", "wed", "thu", "fri"];
       return days.every((day) => {
@@ -117,7 +119,6 @@ function AutoTimeTable() {
       });
     };
 
-    // ✅ 하위 조합 필터링
     const filtered = [];
     for (let i = 0; i < results.length; i++) {
       let subsetFound = false;
@@ -132,55 +133,85 @@ function AutoTimeTable() {
 
     let finalList = filtered;
 
+    const days = ["mon", "tue", "wed", "thu", "fri"];
+
+    if (filterOptions.fridayOff) {
+      finalList = finalList.filter((table) => table.fri.length === 0);
+    }
+
+    if (filterOptions.lunchOff) {
+      finalList = finalList.filter((table) => {
+        const days = ["mon", "tue", "wed", "thu", "fri"];
+        return days.every((d) =>
+          table[d].every((lec) => {
+            const [sh] = lec.startTime.split(":").map(Number);
+            const [eh] = lec.endTime.split(":").map(Number);
+            return !(sh < 13 && eh > 12);
+          })
+        );
+      });
+    }
+
+    if (filterOptions.longClass === "max3h") {
+      finalList = finalList.filter((table) => {
+        const days = ["mon", "tue", "wed", "thu", "fri"];
+
+        return days.every((d) => {
+          const sorted = [...table[d]].sort(
+            (a, b) => parseInt(a.startTime.replace(":", "")) - parseInt(b.startTime.replace(":", ""))
+          );
+
+          for (let i = 0; i < sorted.length - 1; i++) {
+            const end1 = parseInt(sorted[i].endTime.replace(":", ""));
+            const start2 = parseInt(sorted[i + 1].startTime.replace(":", ""));
+
+            const diff =
+              (parseInt(sorted[i + 1].startTime.slice(0, 2)) * 60 +
+                parseInt(sorted[i + 1].startTime.slice(3))) -
+              (parseInt(sorted[i].startTime.slice(0, 2)) * 60 +
+                parseInt(sorted[i].startTime.slice(3)));
+
+            if (diff > 180) return false;
+          }
+          return true;
+        });
+      });
+    }
+
+    if (filterOptions.maxPerDay !== "none") {
+      const limit = filterOptions.maxPerDay === "max3" ? 3 : 4;
+
+      finalList = finalList.filter((table) => {
+        const days = ["mon", "tue", "wed", "thu", "fri"];
+        return days.every((d) => table[d].length <= limit);
+      });
+    }
+
     if (filterOptions.preferFreeTimes) {
       finalList = [...finalList].sort(
         (a, b) => scoreTimetable(b) - scoreTimetable(a)
       );
     }
 
-    if (filterOptions.avoid9am) {
-      finalList = [...finalList].sort((a, b) => {
-        const hasA9 = ["mon","tue","wed","thu","fri"].some(
-          (d) => a[d].some((lec) => lec.startTime === "09:00")
-        );
-        const hasB9 = ["mon","tue","wed","thu","fri"].some(
-          (d) => b[d].some((lec) => lec.startTime === "09:00")
-        );
-        return hasA9 - hasB9;
-      });
-    }
 
-    if (filterOptions.fewerLectures) {
-      finalList = [...finalList].sort((a, b) => {
-        const countA = Object.values(a).reduce((s, arr) => s + arr.length, 0);
-        const countB = Object.values(b).reduce((s, arr) => s + arr.length, 0);
-        return countA - countB;
-      });
-    }
-
-    // ✅ 요일별 강의 오름차순 정렬
     finalList.forEach((table) => {
-      const days = ["mon", "tue", "wed", "thu", "fri"];
       days.forEach((day) => {
         table[day].sort((a, b) => {
-          const [aH, aM] = a.startTime.split(":").map(Number);
-          const [bH, bM] = b.startTime.split(":").map(Number);
-          return aH * 60 + aM - (bH * 60 + bM);
+          const [h1, m1] = a.startTime.split(":").map(Number);
+          const [h2, m2] = b.startTime.split(":").map(Number);
+          return h1 * 60 + m1 - (h2 * 60 + m2);
         });
       });
     });
 
-    // ✅ 최종 결과 저장
     setGenerated(finalList);
   };
 
-  // ✅ 시간표 적용
   const applyToTimeTable = (table) => {
     setTimeTableData(table);
     navigate("/timetable");
   };
 
-  // ✅ 미리보기 다이얼로그 열기
   const openPreview = (table) => {
     setPreviewData(table);
     setPreviewOpen(true);
@@ -188,35 +219,28 @@ function AutoTimeTable() {
 
   return (
     <Box sx={{ width: "85%", margin: "0 auto", mt: 4 }}>
-      <Box 
-        sx={{ 
-          display: "flex", 
-          alignItems: "center", 
-          mb: 3, 
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          mb: 3,
           gap: 1,
-          pl: 1
+          pl: 1,
         }}
       >
         <Button
           onClick={() => navigate(-1)}
-          sx={{
-            minWidth: "auto",
-            p: 0,
-            color: "black",
-          }}
+          sx={{ minWidth: "auto", p: 0, color: "black" }}
         >
           <ChevronLeftIcon sx={{ fontSize: 40 }} />
         </Button>
-
         <Typography variant="h4" fontWeight={700}>
           자동 시간표 생성기
         </Typography>
       </Box>
 
-      
-      <Box sx={{ pl: 5 }}> 
-        {/* 강의 선택 */}
-        <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+      <Box sx={{ pl: 5 }}>
+        <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
           <Button
             variant="contained"
             color="secondary"
@@ -224,12 +248,63 @@ function AutoTimeTable() {
           >
             강의 추가하기
           </Button>
-
           <Button variant="contained" color="success" onClick={handleGenerate}>
             가능한 시간표 보기
           </Button>
-            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-            <label>
+        </Box>
+
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+            gap: 2,
+            p: 2,
+            border: "1px solid #ddd",
+            borderRadius: 2,
+            background: "#fafafa",
+          }}
+        >
+
+          {/* 연강 최대 3시간 */}
+          <Box>
+            <Typography variant="subtitle2" fontWeight={600}>연강 제한</Typography>
+            <select
+              style={{ width: "100%", padding: "6px", marginTop: "4px" }}
+              value={filterOptions.longClass}
+              onChange={(e) =>
+                setFilterOptions((prev) => ({
+                  ...prev,
+                  longClass: e.target.value,
+                }))
+              }
+            >
+              <option value="none">사용 안 함</option>
+              <option value="max3h">연강 최대 3시간</option>
+            </select>
+          </Box>
+
+          {/* 금요일 공강 */}
+          <Box>
+            <Typography variant="subtitle2" fontWeight={600}>금요일 공강</Typography>
+            <label style={{ display: "block", marginTop: "6px" }}>
+              <input
+                type="checkbox"
+                checked={filterOptions.fridayOff}
+                onChange={(e) =>
+                  setFilterOptions((prev) => ({
+                    ...prev,
+                    fridayOff: e.target.checked,
+                  }))
+                }
+              />{" "}
+              금요일 공강
+            </label>
+          </Box>
+
+          {/* 공강 많은 순 */}
+          <Box>
+            <Typography variant="subtitle2" fontWeight={600}>정렬 옵션</Typography>
+            <label style={{ display: "block", marginTop: "6px" }}>
               <input
                 type="checkbox"
                 checked={filterOptions.preferFreeTimes}
@@ -239,41 +314,51 @@ function AutoTimeTable() {
                     preferFreeTimes: e.target.checked,
                   }))
                 }
-              />
+              />{" "}
               공강 많은 순
             </label>
+          </Box>
 
-            <label>
+          {/* 점심시간 제외 */}
+          <Box>
+            <Typography variant="subtitle2" fontWeight={600}>점심시간 제외</Typography>
+            <label style={{ display: "block", marginTop: "6px" }}>
               <input
                 type="checkbox"
-                checked={filterOptions.avoid9am}
+                checked={filterOptions.lunchOff}
                 onChange={(e) =>
                   setFilterOptions((prev) => ({
                     ...prev,
-                    avoid9am: e.target.checked,
+                    lunchOff: e.target.checked,
                   }))
                 }
-              />
-              1교시 제외
-            </label>
-
-            <label>
-              <input
-                type="checkbox"
-                checked={filterOptions.fewerLectures}
-                onChange={(e) =>
-                  setFilterOptions((prev) => ({
-                    ...prev,
-                    fewerLectures: e.target.checked,
-                  }))
-                }
-              />
-              수업 적은 순
+              />{" "}
+              12:00~13:00 수업 제외
             </label>
           </Box>
+
+          {/* 하루 최대 수업 수 */}
+          <Box>
+            <Typography variant="subtitle2" fontWeight={600}>하루 최대 수업 수</Typography>
+            <select
+              style={{ width: "100%", padding: "6px", marginTop: "4px" }}
+              value={filterOptions.maxPerDay}
+              onChange={(e) =>
+                setFilterOptions((prev) => ({
+                  ...prev,
+                  maxPerDay: e.target.value,
+                }))
+              }
+            >
+              <option value="none">제한 없음</option>
+              <option value="max3">최대 3개</option>
+              <option value="max4">최대 4개</option>
+            </select>
+          </Box>
+
         </Box>
 
-        {/* ✅ 선택된 강의 목록 */}
+
         {selectedLectures.length > 0 && (
           <Box
             sx={{
@@ -305,11 +390,6 @@ function AutoTimeTable() {
                     borderRadius: 2,
                     backgroundColor: "#fff",
                     boxShadow: "1px 1px 4px rgba(0,0,0,0.05)",
-                    transition: "transform 0.15s ease, box-shadow 0.15s ease",
-                    "&:hover": {
-                      transform: "translateY(-2px)",
-                      boxShadow: "2px 2px 6px rgba(0,0,0,0.1)",
-                    },
                   }}
                 >
                   <Button
@@ -329,7 +409,6 @@ function AutoTimeTable() {
                       px: 1.2,
                       py: 0.3,
                       fontSize: "0.7rem",
-                      textTransform: "none",
                     }}
                   >
                     삭제
@@ -339,15 +418,20 @@ function AutoTimeTable() {
                     {lec.name}
                   </Typography>
                   <Typography sx={{ fontSize: "0.85rem", color: "#555" }}>
-                    {lec.day} {lec.startTime}~{lec.endTime}
+                    {lec.slots
+                      .map(
+                        (slot) =>
+                          `${slot.day.toUpperCase()} ${slot.startTime}~${slot.endTime}`
+                      )
+                      .join(", ")}
                   </Typography>
+
                 </Box>
               ))}
             </Box>
           </Box>
         )}
 
-        {/* ✅ 조합 리스트 */}
         <Box mt={4}>
           {generated.map((table, idx) => (
             <Paper
@@ -365,6 +449,7 @@ function AutoTimeTable() {
                 <Typography variant="subtitle1" fontWeight={700}>
                   조합 {idx + 1}
                 </Typography>
+
                 {["mon", "tue", "wed", "thu", "fri"].map((day) => (
                   <div key={day}>
                     <strong>{day.toUpperCase()}</strong> :
@@ -379,6 +464,7 @@ function AutoTimeTable() {
                     )}
                   </div>
                 ))}
+
                 <Button
                   variant="outlined"
                   size="small"
@@ -389,7 +475,6 @@ function AutoTimeTable() {
                 </Button>
               </Box>
 
-              {/* ✅ 오른쪽 "시간표 미리보기" 버튼 */}
               <Button
                 variant="contained"
                 color="primary"
@@ -401,14 +486,12 @@ function AutoTimeTable() {
           ))}
         </Box>
 
-        {/* ✅ 강의 선택 모달 */}
         <LectureSelector
           open={showSelector}
           handleClose={() => setShowSelector(false)}
           onSelect={handleLectureSelect}
         />
 
-        {/* ✅ 미리보기 다이얼로그 */}
         <Dialog
           open={previewOpen}
           onClose={() => setPreviewOpen(false)}
